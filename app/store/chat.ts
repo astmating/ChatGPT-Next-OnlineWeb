@@ -31,7 +31,7 @@ export function createMessage(override: Partial<Message>): Message {
     date: new Date().toLocaleString(),
     role: "user",
     content: "",
-    webContent: "",
+    webContent: undefined,
     ...override,
   };
 }
