@@ -5,6 +5,7 @@ import { type ChatCompletionResponseMessage } from "openai";
 import {
   ControllerPool,
   requestChatStream,
+  requestWebSearch,
   requestWithPrompt,
 } from "../requests";
 import { isMobileScreen, trimTopic } from "../utils";
@@ -21,6 +22,7 @@ export type Message = ChatCompletionResponseMessage & {
   isError?: boolean;
   id?: number;
   model?: ModelType;
+  webContent?: string;
 };
 
 export function createMessage(override: Partial<Message>): Message {
@@ -29,6 +31,7 @@ export function createMessage(override: Partial<Message>): Message {
     date: new Date().toLocaleString(),
     role: "user",
     content: "",
+    webContent: "",
     ...override,
   };
 }
@@ -89,7 +92,7 @@ interface ChatStore {
   deleteSession: (index: number) => void;
   currentSession: () => ChatSession;
   onNewMessage: (message: Message) => void;
-  onUserInput: (content: string) => Promise<void>;
+  onUserInput: (content: string, isWebSearch: boolean) => Promise<void>;
   summarizeSession: () => void;
   updateStat: (message: Message) => void;
   updateCurrentSession: (updater: (session: ChatSession) => void) => void;
@@ -235,10 +238,10 @@ export const useChatStore = create<ChatStore>()(
         get().summarizeSession();
       },
 
-      async onUserInput(content) {
+      async onUserInput(content, isWebSearch) {
         const session = get().currentSession();
         const modelConfig = session.mask.modelConfig;
-
+        console.log(1);
         const userMessage: Message = createMessage({
           role: "user",
           content,
@@ -260,9 +263,39 @@ export const useChatStore = create<ChatStore>()(
         // save user's and bot's message
         get().updateCurrentSession((session) => {
           session.messages.push(userMessage);
+        });
+        if (isWebSearch) {
+          const query = encodeURIComponent(content);
+          const body = await requestWebSearch(query);
+          const webSearchPrompt = `
+Using the provided web search results, write a comprehensive reply to the given query.
+If the provided search results refer to multiple subjects with the same name, write separate answers for each subject.
+Make sure to cite results using \`[[number](URL)]\` notation after the reference.
+
+Web search json results:
+"""
+${JSON.stringify(body)}
+"""
+
+Current date:
+"""
+${new Date().toISOString()}
+"""
+
+Query:
+"""
+${content}
+"""
+
+Reply in Chinese and markdown.
+          `;
+          console.log(webSearchPrompt);
+          userMessage.webContent = webSearchPrompt;
+        }
+        // save user's and bot's message
+        get().updateCurrentSession((session) => {
           session.messages.push(botMessage);
         });
-
         // make request
         console.log("[User Input] ", sendMessages);
         requestChatStream(sendMessages, {
