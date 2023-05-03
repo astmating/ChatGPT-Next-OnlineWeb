@@ -24,6 +24,7 @@ export const DEFAULT_CONFIG = {
   tightBorder: false,
   sendPreviewBubble: true,
   sidebarWidth: 300,
+  webSearch: false,
 
   disablePromptHint: false,
 
@@ -140,6 +141,7 @@ export const useAppConfig = create<ChatConfigStore>()(
         state.modelConfig.historyMessageCount = 4;
         state.modelConfig.compressMessageLengthThreshold = 1000;
         state.dontShowMaskSplashScreen = false;
+        state.webSearch = false;
 
         return state;
       },
