@@ -498,7 +498,7 @@ export function Chat() {
 
   // submit user input
   const onUserSubmit = () => {
-    if (userInput.length <= 0) return;
+    if (userInput.trim() === "") return;
     setIsLoading(true);
     chatStore
       .onUserInput(userInput, config.webSearch)
